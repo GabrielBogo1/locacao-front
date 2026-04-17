@@ -1,0 +1,200 @@
+<template>
+  <LayoutComponent>
+    <CrudTableComponent
+      buttonText="Novo Cliente"
+      :headers="headers"
+      :itens="itens"
+      @abrir-modal="abrirModal"
+      @abrir-modal-delete="abrirModalDelete"
+      @edit="abrirModalEdit"
+    >
+    </CrudTableComponent>
+    <ModalDeleteComponent
+      @input="dialogDelete = $event"
+      @delete="deleteCliente"
+      :value="dialogDelete"
+      :item="item"
+    ></ModalDeleteComponent>
+    <ModalComponent
+      :value="dialog"
+      @input="dialog = $event"
+      @save="save"
+      ref="modal"
+    >
+      <template v-slot:conteudoCliente>
+        <v-col cols="12">
+          <v-text-field
+            :rules="[rules.required]"
+            label="Nome*"
+            required
+            v-model="nome"
+          ></v-text-field>
+          <v-text-field
+            label="CPF*"
+            :rules="[rules.required]"
+            required
+            v-model="cpfFormatado"
+          ></v-text-field>
+          <v-text-field
+            label="Telefone*"
+            required
+            v-model="telefone"
+            v-mask="['(##) ####-####']"
+            :rules="[rules.required]"
+          ></v-text-field>
+        </v-col>
+      </template>
+    </ModalComponent>
+    <v-snackbar
+      v-model="snackbar"
+      :timeout="4000"
+      bottom
+      right
+      elevation="6"
+      rounded="lg"
+      color="error"
+    >
+      <div class="d-flex align-center">
+        <v-icon left>mdi-alert-circle</v-icon>
+        {{ this.mensagem }}
+      </div>
+    </v-snackbar>
+  </LayoutComponent>
+</template>
+
+<script>
+import CrudTableComponent from "./CrudTableComponent.vue";
+import LayoutComponent from "./LayoutComponent.vue";
+import ModalComponent from "./ModalComponent.vue";
+import ModalDeleteComponent from "./ModalDeleteComponent.vue";
+import clienteService from "@/services/clienteService";
+
+export default {
+  name: "ClientesComponent",
+  data() {
+    return {
+      nome: "",
+      cpf: "",
+      telefone: "",
+      dialog: false,
+      dialogDelete: false,
+      snackbar: false,
+      mensagem: "",
+      item: [],
+      itens: [],
+      isEditing: false,
+      idEdit: null,
+      headers: [
+        { text: "Id", value: "id" },
+        { text: "Nome", value: "nome" },
+        { text: "Telefone", value: "telefone" },
+        { text: "Ações", value: "actions", sortable: false },
+      ],
+      rules: {
+        required: (value) => !!value || "Campo obrigatório.",
+        cpf: (value) => {
+          const pattern = 12;
+          return pattern.test(value) || "CPF inválido";
+        },
+      },
+    };
+  },
+  computed: {
+    cpfFormatado: {
+      get() {
+        return this.cpf
+          .replace(/\D/g, "")
+          .replace(/(\d{3})(\d)/, "$1.$2")
+          .replace(/(\d{3})(\d)/, "$1.$2")
+          .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+      },
+      set(valor) {
+        this.cpf = valor.replace(/\D/g, "");
+      },
+    },
+  },
+
+  methods: {
+    abrirModal() {
+      this.dialog = true;
+      this.$nextTick(() => {
+        this.$refs.modal.resetForm();
+      });
+    },
+    async loadUsers() {
+      const { data } = await clienteService.getAll();
+      this.itens = data.data;
+    },
+    abrirModalEdit(item) {
+      this.dialog = true;
+      this.isEditing = true;
+
+      this.idEdit = item.id;
+
+      this.nome = item.nome;
+      this.cpf = item.cpf;
+      this.telefone = item.telefone;
+
+      console.log(item.cpf);
+    },
+    abrirModalDelete(item) {
+      this.dialogDelete = true;
+      this.item = item;
+    },
+    save() {
+      let body = {
+        nome: this.nome,
+        cpf: this.cpf,
+        telefone: this.telefone,
+      };
+
+      if (this.isEditing) {
+        clienteService
+          .update(this.item.id, body)
+          .then(() => {
+            this.dialog = false;
+            this.isEditing = false;
+            this.loadUsers();
+          })
+          .catch((error) => {
+            this.snackbar = true;
+            Object.keys(error.response.data.errors).forEach((field) => {
+              this.mensagem = error.response.data.errors[field][0];
+            });
+          });
+      } else {
+        clienteService.create(body).catch((error) => {
+          this.snackbar = true;
+          Object.keys(error.response.data.errors).forEach((field) => {
+            this.mensagem = error.response.data.errors[field][0];
+          });
+        });
+      }
+    },
+    async deleteCliente() {
+      clienteService
+        .delete(this.item.id)
+        .then(() => {
+          this.dialogDelete = false;
+          this.loadUsers();
+        })
+        .catch((error) => {
+          this.snackbar = true;
+          Object.keys(error.response.data.errors).forEach((field) => {
+            this.mensagem = error.response.data.errors[field][0];
+          });
+        });
+    },
+  },
+  async mounted() {
+    await this.loadUsers();
+  },
+
+  components: {
+    LayoutComponent,
+    CrudTableComponent,
+    ModalComponent,
+    ModalDeleteComponent,
+  },
+};
+</script>

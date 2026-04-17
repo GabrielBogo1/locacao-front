@@ -156,6 +156,7 @@ export default {
             this.$router.push("/");
           } else {
             this.$router.push("/locacoes");
+            this.isLoggedIn = true;
           }
         })
         .catch((error) => {

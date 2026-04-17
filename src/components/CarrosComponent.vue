@@ -1,33 +1,26 @@
 <template>
   <LayoutComponent>
     <CrudTableComponent
-      :headers="headers"
-      :items="locacoes"
-      @create="criar"
-      @edit="editar"
-      @delete="deletar"
+      buttonText="Novo Carro"
       @abrir-modal="abrirModal"
     ></CrudTableComponent>
     <ModalComponent :value="dialog" @input="dialog = $event">
-      <template v-slot:conteudoLocacoes>
-        <v-select label="Cliente*" required v-model="cliente"></v-select>
-        <v-select label="Carro*" required v-model="carro"></v-select>
+      <template v-slot:conteudoCarro>
+        <v-text-field label="Modelo*" required v-model="modelo"></v-text-field>
+        <v-text-field label="Placa*" required v-model="placa"></v-text-field>
+        <v-text-field label="KM*" required v-model="km"></v-text-field>
       </template>
     </ModalComponent>
   </LayoutComponent>
 </template>
 
 <script>
-import CrudTableComponent from "@/components/CrudTableComponent.vue";
+import CrudTableComponent from "./CrudTableComponent.vue";
 import LayoutComponent from "./LayoutComponent.vue";
 import ModalComponent from "./ModalComponent.vue";
+
 export default {
-  name: "LocacoesComponent",
-  components: {
-    CrudTableComponent,
-    LayoutComponent,
-    ModalComponent,
-  },
+  name: "CarrosComponent",
   data() {
     return {
       dialog: false,
@@ -37,6 +30,11 @@ export default {
     abrirModal() {
       this.dialog = true;
     },
+  },
+  components: {
+    LayoutComponent,
+    CrudTableComponent,
+    ModalComponent,
   },
 };
 </script>

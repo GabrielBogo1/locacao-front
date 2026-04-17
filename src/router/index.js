@@ -19,7 +19,31 @@ const routes = [
     path: "/locacoes",
     name: "locacoes",
     component: () => import("@/views/LocacoesView.vue"),
-    meta: { requiresAuth: true },
+    meta: { requiresAuth: true, title: "Locações" },
+  },
+  {
+    path: "/clientes",
+    name: "clientes",
+    component: () => import("@/views/ClientesView.vue"),
+    meta: { requiresAuth: true, title: "Clientes" },
+  },
+  {
+    path: "/carros",
+    name: "carros",
+    component: () => import("@/views/CarrosView.vue"),
+    meta: { requiresAuth: true, title: "Carros" },
+  },
+  {
+    path: "/marcas",
+    name: "marcas",
+    component: () => import("@/views/MarcasView.vue"),
+    meta: { requiresAuth: true, title: "Marcas" },
+  },
+  {
+    path: "/modelos",
+    name: "modelos",
+    component: () => import("@/views/ModelosView.vue"),
+    meta: { requiresAuth: true, title: "Modelos" },
   },
 ];
 
