@@ -32,12 +32,13 @@
           <v-text-field
             label="CPF*"
             :rules="[rules.required]"
-            required
             v-model="cpfFormatado"
+            v-mask="['###.###.###-##']"
+            type="tel"
+            @keypress="apenasNumeros"
           ></v-text-field>
           <v-text-field
             label="Telefone*"
-            required
             v-model="telefone"
             v-mask="['(##) ####-####']"
             :rules="[rules.required]"
@@ -52,7 +53,7 @@
       right
       elevation="6"
       rounded="lg"
-      color="error"
+      :color="color"
     >
       <div class="d-flex align-center">
         <v-icon left>mdi-alert-circle</v-icon>
@@ -84,6 +85,7 @@ export default {
       itens: [],
       isEditing: false,
       idEdit: null,
+      color: "",
       headers: [
         { text: "Id", value: "id" },
         { text: "Nome", value: "nome" },
@@ -92,10 +94,6 @@ export default {
       ],
       rules: {
         required: (value) => !!value || "Campo obrigatório.",
-        cpf: (value) => {
-          const pattern = 12;
-          return pattern.test(value) || "CPF inválido";
-        },
       },
     };
   },
@@ -109,7 +107,7 @@ export default {
           .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
       },
       set(valor) {
-        this.cpf = valor.replace(/\D/g, "");
+        this.cpf = valor ? valor.replace(/\D/g, "") : "";
       },
     },
   },
@@ -121,21 +119,14 @@ export default {
         this.$refs.modal.resetForm();
       });
     },
-    async loadUsers() {
-      const { data } = await clienteService.getAll();
-      this.itens = data.data;
-    },
     abrirModalEdit(item) {
       this.dialog = true;
       this.isEditing = true;
 
       this.idEdit = item.id;
-
       this.nome = item.nome;
       this.cpf = item.cpf;
       this.telefone = item.telefone;
-
-      console.log(item.cpf);
     },
     abrirModalDelete(item) {
       this.dialogDelete = true;
@@ -150,25 +141,40 @@ export default {
 
       if (this.isEditing) {
         clienteService
-          .update(this.item.id, body)
+          .update(this.idEdit, body)
           .then(() => {
             this.dialog = false;
             this.isEditing = false;
+            this.dialog = false;
+            this.snackbar = true;
+            this.color = "green";
+            this.mensagem = "Cliente atualizado com sucesso!";
             this.loadUsers();
           })
           .catch((error) => {
             this.snackbar = true;
+            this.color = "red";
             Object.keys(error.response.data.errors).forEach((field) => {
               this.mensagem = error.response.data.errors[field][0];
             });
           });
       } else {
-        clienteService.create(body).catch((error) => {
-          this.snackbar = true;
-          Object.keys(error.response.data.errors).forEach((field) => {
-            this.mensagem = error.response.data.errors[field][0];
+        clienteService
+          .create(body)
+          .then(() => {
+            this.dialog = false;
+            this.snackbar = true;
+            this.color = "green";
+            this.mensagem = "Cliente cadastrado com sucesso!";
+            this.loadUsers();
+          })
+          .catch((error) => {
+            this.snackbar = true;
+            this.color = "red";
+            Object.keys(error.response.data.errors).forEach((field) => {
+              this.mensagem = error.response.data.errors[field][0];
+            });
           });
-        });
       }
     },
     async deleteCliente() {
@@ -176,18 +182,34 @@ export default {
         .delete(this.item.id)
         .then(() => {
           this.dialogDelete = false;
+          this.snackbar = true;
+          this.color = "green";
+          this.mensagem = "Cliente deletado com sucesso!";
           this.loadUsers();
         })
         .catch((error) => {
           this.snackbar = true;
+          this.color = "red";
+
           Object.keys(error.response.data.errors).forEach((field) => {
             this.mensagem = error.response.data.errors[field][0];
           });
         });
     },
+    apenasNumeros(event) {
+      const char = String.fromCharCode(event.keyCode);
+      if (!/[0-9]/.test(char)) {
+        event.preventDefault();
+      }
+    },
+
+    async loadUsers() {
+      const { data } = await clienteService.getAll();
+      this.itens = data.data;
+    },
   },
-  async mounted() {
-    await this.loadUsers();
+  mounted() {
+    this.loadUsers();
   },
 
   components: {

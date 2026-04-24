@@ -9,13 +9,19 @@
       <v-col cols="12" md="6">
         <v-text-field
           :label="searchLabel"
+          v-model="search"
           dense
           outlined
           append-icon="mdi-magnify"
         ></v-text-field>
       </v-col>
     </v-row>
-    <v-data-table class="elevation-1" :headers="headers" :items="itens">
+    <v-data-table
+      class="elevation-1"
+      :headers="headers"
+      :items="itens"
+      :search="search"
+    >
       <template
         v-for="header in headers"
         v-slot:[`item.${header.value}`]="{ item }"
@@ -43,11 +49,17 @@ export default {
   components: {
     // ModalComponent,
   },
+  data() {
+    return {
+      search: "",
+    };
+  },
   props: {
     headers: Array,
     itens: Array,
     marcas: Array,
     loading: Boolean,
+
     item: Array,
     buttonText: {
       type: String,

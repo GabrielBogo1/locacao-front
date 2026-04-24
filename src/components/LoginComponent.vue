@@ -150,13 +150,14 @@ export default {
       axios
         .post(this.baseUrl, body)
         .then((response) => {
-          console.log(response.data);
           localStorage.setItem("token", response.data.access_token);
           if (!localStorage.getItem("token")) {
             this.$router.push("/");
           } else {
             this.$router.push("/locacoes");
             this.isLoggedIn = true;
+            this.snackbar = true;
+            this.mensagem = "Login realizado com sucesso!";
           }
         })
         .catch((error) => {
