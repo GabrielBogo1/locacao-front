@@ -7,6 +7,9 @@
       @edit="abrirModalEdit"
       :headers="headers"
       :itens="itens"
+      :total-itens="totalItens"
+      :options.sync="options"
+      @update:options="loadModelosPaginado"
     >
       <template v-slot:[`item.image`]="{ item }">
         <v-img
@@ -54,9 +57,13 @@
           ></v-img>
         </div>
         <v-file-input
-          label="Imagem*"
+          :label="
+            isEditing
+              ? 'Deixe em branco caso queira manter a imagem atual'
+              : 'Imagem*'
+          "
           v-model="imagem"
-          :rules="[rules.required]"
+          :rules="isEditing ? [] : [rules.required]"
         ></v-file-input>
         <v-text-field
           label="Número de portas*"
@@ -118,6 +125,8 @@ export default {
     return {
       marcas: [],
       marcaSelecionada: null,
+      totalItens: 0,
+      options: { page: 1, itemsPerPage: 10 },
       nome: "",
       itens: [],
       item: [],
@@ -137,6 +146,7 @@ export default {
       value: "",
       name: false,
       imagemAtual: null,
+      label: "",
       headers: [
         { text: "Id", value: "id" },
         { text: "Nome", value: "nome" },
@@ -168,6 +178,7 @@ export default {
     abrirModal() {
       this.dialog = true;
       this.isEditing = false;
+      this.imagemAtual = null;
       this.$nextTick(() => {
         this.$refs.modal.resetForm();
       });
@@ -179,15 +190,26 @@ export default {
       this.marcaSelecionada = item.marca_id;
       this.nome = item.nome;
       this.imagem = null;
-      this.imagemAtual = "http://localhost:8000/storage/" + item.image;
+      this.imagemAtual = "http://localhost:8000/storage/" + item.imagem;
       this.numero_portas = item.numero_portas;
       this.lugares = item.lugares;
-      this.air_bag = item.air_bag;
-      this.abs = item.abs;
+      this.air_bag = String(item.air_bag);
+      this.abs = String(item.abs);
+
+      console.log(item.abs);
+      console.log(item.air_bag);
     },
     abrirModalDelete(item) {
       this.dialogDelete = true;
       this.item = item;
+    },
+    async loadModelosPaginado() {
+      const { data } = await modeloService.getPaginate(
+        this.options.page,
+        this.options.itemsPerPage
+      );
+      this.itens = data.data;
+      this.totalItens = data.total;
     },
     save() {
       let config = {
@@ -199,21 +221,26 @@ export default {
       const formData = new FormData();
       formData.append("marca_id", this.marcaSelecionada);
       formData.append("nome", this.nome);
-      formData.append("imagem", this.imagem);
       formData.append("numero_portas", this.numero_portas);
       formData.append("lugares", this.lugares);
       formData.append("air_bag", this.air_bag);
       formData.append("abs", this.abs);
 
+      if (this.imagem) {
+        formData.append("imagem", this.imagem);
+      }
+
       if (this.isEditing) {
+        formData.append("_method", "PUT");
         modeloService
-          .update(formData, this.idEdit, config)
+          .update(this.idEdit, formData, config)
           .then(() => {
             this.dialog = false;
             this.isEditing = false;
             this.snackbar = true;
             this.color = "green";
             this.mensagem = "Modelo atualizado com sucesso!";
+            this.loadModelos();
           })
           .catch((error) => {
             this.snackbar = true;
@@ -269,8 +296,9 @@ export default {
     },
   },
   mounted() {
-    this.loadModelos();
+    // this.loadModelos();
     this.loadMarcas();
+    this.loadModelosPaginado();
   },
   components: {
     LayoutComponent,

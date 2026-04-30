@@ -5,6 +5,10 @@ export default {
     return api.get("/carro");
   },
 
+  getPaginate(page = 1, perPage = 10) {
+    return api.get(`/carro/paginate?page=${page}&per_page=${perPage}`);
+  },
+
   create(data) {
     return api.post("/carro", data);
   },

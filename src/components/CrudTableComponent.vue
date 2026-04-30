@@ -21,6 +21,9 @@
       :headers="headers"
       :items="itens"
       :search="search"
+      :server-items-length="totalItens"
+      :options.sync="localOptions"
+      @update:options="$emit('update:options', $event)"
     >
       <template
         v-for="header in headers"
@@ -37,14 +40,15 @@
         <v-btn icon @click="$emit('abrir-modal-delete', item)">
           <v-icon color="red">mdi-delete</v-icon>
         </v-btn>
+        <v-btn icon @click="$emit('abrir-modal-finalizar', item)">
+          <v-icon color="green">mdi-check-circle-outline</v-icon>
+        </v-btn>
       </template>
     </v-data-table>
   </v-container>
 </template>
 
 <script>
-// import ModalComponent from "./ModalComponent.vue";
-
 export default {
   components: {
     // ModalComponent,
@@ -52,6 +56,7 @@ export default {
   data() {
     return {
       search: "",
+      localOptions: { ...this.options },
     };
   },
   props: {
@@ -59,7 +64,14 @@ export default {
     itens: Array,
     marcas: Array,
     loading: Boolean,
-
+    totalItens: {
+      type: Number,
+      default: 0,
+    },
+    options: {
+      type: Object,
+      default: () => ({ page: 1, itemsPerPage: 10 }),
+    },
     item: Array,
     buttonText: {
       type: String,
@@ -68,6 +80,12 @@ export default {
     searchLabel: {
       type: String,
       default: "Pesquisar",
+    },
+  },
+  watch: {
+    // Atualiza o local caso o pai mude as options
+    options(val) {
+      this.localOptions = { ...val };
     },
   },
 };

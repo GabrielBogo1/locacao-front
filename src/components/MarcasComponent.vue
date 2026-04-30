@@ -7,6 +7,9 @@
       @edit="abrirModalEdit"
       :itens="itens"
       :headers="headers"
+      :total-itens="totalItens"
+      :options.sync="options"
+      @update:options="loadMarcasPaginado"
     >
       <template v-slot:[`item.image`]="{ item }">
         <v-img
@@ -46,9 +49,13 @@
           ></v-img>
         </div>
         <v-file-input
-          label="imagem*"
+          :label="
+            isEditing
+              ? 'Deixe em branco caso queira manter a imagem atual'
+              : 'Imagem*'
+          "
           v-model="imagem"
-          :rules="[rules.required]"
+          :rules="isEditing ? [] : [rules.required]"
         ></v-file-input>
       </template>
     </ModalComponent>
@@ -82,12 +89,16 @@ export default {
     return {
       dialog: false,
       dialogDelete: false,
+      label: "",
       nome: "",
-      imagem: null,
+      imagem: "",
       itens: [],
       item: [],
       mensagem: "",
+      totalItens: 0,
+      options: { page: 1, itemsPerPage: 10 },
       isEditing: false,
+      idSelecionado: null,
       snackbar: false,
       imagemAtual: null,
       color: "",
@@ -105,25 +116,41 @@ export default {
   methods: {
     abrirModal() {
       this.dialog = true;
+      this.isEditing = false;
+      this.imagemAtual = null;
       this.$nextTick(() => {
         this.$refs.modal.resetForm();
       });
     },
     abrirModalEdit(item) {
       this.dialog = true;
+      this.isEditing = true;
+      this.idSelecionado = item.id;
 
       this.nome = item.nome;
-      this.imagem = item.imagem;
+      this.imagem = null;
+      this.imagemAtual = "http://localhost:8000/storage/" + item.imagem;
     },
     abrirModalDelete(item) {
       this.item = item;
       this.dialogDelete = true;
     },
+    async loadMarcasPaginado() {
+      const { data } = await marcaService.getPaginate(
+        this.options.page,
+        this.options.itemsPerPage
+      );
+      this.itens = data.data;
+      this.totalItens = data.total;
+    },
 
     save() {
       const formData = new FormData();
       formData.append("nome", this.nome);
-      formData.append("imagem", this.imagem);
+
+      if (this.imagem) {
+        formData.append("imagem", this.imagem);
+      }
 
       let config = {
         headers: {
@@ -131,13 +158,15 @@ export default {
         },
       };
 
-      if (this.nome == "" || this.imagem == "") {
+      if (this.nome == "") {
         this.snackbar = true;
         this.mensagem = "Verifique os campos obrigatórios";
+        return;
       } else {
         if (this.isEditing) {
+          formData.append("_method", "PUT");
           marcaService
-            .update(formData, config)
+            .update(this.idSelecionado, formData)
             .then(() => {
               this.dialog = false;
               this.snackbar = true;
@@ -194,7 +223,6 @@ export default {
     async loadMarcas() {
       const { data } = await marcaService.getAll();
       this.itens = data.data;
-      console.log(this.itens);
     },
   },
   async mounted() {

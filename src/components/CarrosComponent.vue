@@ -7,7 +7,21 @@
       @edit="abrirModalEdit"
       :itens="itens"
       :headers="headers"
-    ></CrudTableComponent>
+      :total-itens="totalItens"
+      :options.sync="options"
+      @update:options="loadCarrosPaginado"
+    >
+      <template #[`item.modelo_id`]="{ item }">
+        {{ getNomeModelo(item.modelo_id) }}
+      </template>
+
+      <template #[`item.disponivel`]="{ item }">
+        {{ getDisponivel(item.disponivel) }}
+      </template>
+      <template #[`item.km`]="{ item }">
+        {{ getQuilometragem(item.km) }} KM
+      </template>
+    </CrudTableComponent>
     <ModalDeleteComponent
       @input="dialogDelete = $event"
       @delete="deleteCarro"
@@ -77,6 +91,8 @@ export default {
       itens: [],
       modelos: [],
       modeloSelecionado: null,
+      totalItens: 0,
+      options: { page: 1, itemsPerPage: 10 },
       placa: "",
       disponivel: 1,
       km: "",
@@ -120,6 +136,14 @@ export default {
     abrirModalDelete(item) {
       this.item = item;
       this.dialogDelete = true;
+    },
+    async loadCarrosPaginado() {
+      const { data } = await carroService.getPaginate(
+        this.options.page,
+        this.options.itemsPerPage
+      );
+      this.itens = data.data;
+      this.totalItens = data.total;
     },
     save() {
       let body = {
@@ -183,6 +207,24 @@ export default {
           });
         });
     },
+    getDisponivel(id) {
+      const carro = this.itens.find((m) => m.id === id);
+      const disponivel = carro ? carro.disponivel : id;
+
+      if (disponivel == "1") {
+        return "Sim";
+      } else {
+        return "Não";
+      }
+    },
+    getQuilometragem(id) {
+      const carro = this.itens.find((m) => m.id === id);
+      return carro ? carro.km : id;
+    },
+    getNomeModelo(id) {
+      const modelo = this.modelos.find((m) => m.id === id);
+      return modelo ? modelo.nome : id;
+    },
     async loadCarros() {
       const { data } = await carroService.getAll();
       this.itens = data.data;
@@ -193,7 +235,8 @@ export default {
     },
   },
   mounted() {
-    this.loadCarros();
+    // this.loadCarros();
+    this.loadCarrosPaginado();
     this.loadModelos();
   },
   components: {

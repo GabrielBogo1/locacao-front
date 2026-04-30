@@ -7,6 +7,9 @@
       @abrir-modal="abrirModal"
       @abrir-modal-delete="abrirModalDelete"
       @edit="abrirModalEdit"
+      :total-itens="totalItens"
+      :options.sync="options"
+      @update:options="loadClientesPaginado"
     >
     </CrudTableComponent>
     <ModalDeleteComponent
@@ -81,6 +84,8 @@ export default {
       dialogDelete: false,
       snackbar: false,
       mensagem: "",
+      totalItens: 0,
+      options: { page: 1, itemsPerPage: 10 },
       item: [],
       itens: [],
       isEditing: false,
@@ -131,6 +136,14 @@ export default {
     abrirModalDelete(item) {
       this.dialogDelete = true;
       this.item = item;
+    },
+    async loadClientesPaginado() {
+      const { data } = await clienteService.getPaginate(
+        this.options.page,
+        this.options.itemsPerPage
+      );
+      this.itens = data.data;
+      this.totalItens = data.total;
     },
     save() {
       let body = {
