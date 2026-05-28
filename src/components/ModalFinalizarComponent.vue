@@ -23,7 +23,7 @@
           >
             Fechar
           </v-btn>
-          <v-btn color="green darken-1" text @click="$emit('finalizarLocacao')">
+          <v-btn color="green darken-1" text @click="$emit('finalizar')">
             Finalizar
           </v-btn>
         </v-card-actions>

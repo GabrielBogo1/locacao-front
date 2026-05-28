@@ -4,6 +4,8 @@
       :headers="headers"
       :itens="itens"
       buttonText="Nova Locação"
+      :mostraBotaoFinalizar="true"
+      :disableActions="true"
       @abrir-modal="abrirModal"
       @edit="abrirModalEdit"
       @abrir-modal-delete="abrirModalDelete"
@@ -26,11 +28,22 @@
         {{ getNomeCliente(item.cliente_id) }}
       </template>
       <template #[`item.valor_diaria`]="{ item }">
-        R$ {{ getValorDiaria(item.valor_diaria) }}
+        R$ {{ item.valor_diaria }}
+      </template>
+      <template #[`item.ativa`]="{ item }">
+        <span
+          :style="{
+            color: item.ativa ? 'green' : 'red',
+            'font-weight': 'bold',
+          }"
+        >
+          {{ getStatus(item.ativa) }}
+        </span>
       </template>
     </CrudTableComponent>
     <ModalFinalizarComponent
       @input="dialogFinalizar = $event"
+      @finalizar="finalizarLocacao"
       :value="dialogFinalizar"
       :item="item"
       ref="modaldois"
@@ -103,6 +116,7 @@
           :items="carros"
           item-text="placa"
           item-value="id"
+          :item-disabled="disableItem"
         ></v-select>
         <v-text-field
           label="Valor diária*"
@@ -239,6 +253,8 @@ export default {
       valor_diaria: "",
       km_inicial: "",
       km_final: "",
+      ativa: "",
+      teste: 0,
       totalItens: 0,
       options: { page: 1, itemsPerPage: 10 },
       snackbar: false,
@@ -247,6 +263,7 @@ export default {
       mensagem: "",
       dialog: false,
       color: "",
+      statusColor: "",
       dialogDelete: false,
       horaAtual: new Date().toLocaleString("pt-BR", {
         timeZone: "America/Sao_Paulo",
@@ -263,6 +280,7 @@ export default {
         { text: "Data Início", value: "data_inicio_periodo" },
         { text: "Data Final Prev.", value: "data_final_previsto_periodo" },
         { text: "Valor diária", value: "valor_diaria" },
+        { text: "Status", value: "ativa" },
         { text: "Ações", value: "actions" },
       ],
     };
@@ -311,21 +329,14 @@ export default {
     },
     abrirModalFinalizar(item) {
       this.dialogFinalizar = true;
+      this.idSelecionado = item.id;
+
       this.$nextTick(() => {
         this.$refs.modaldois.resetForm();
       });
-
-      this.data_final_realizado_periodo =
-        item.data_final_realizado_periodo.substr(0, 10);
-
-      this.km_final = item.km_final;
     },
     save() {
       let horarioEnvio = this.horaAtual.split(",");
-      console.log(horarioEnvio[1]);
-
-      this.carros;
-
       let body = {
         cliente_id: this.cliente_id,
         carro_id: this.carro_id,
@@ -335,7 +346,8 @@ export default {
         valor_diaria: this.valor_diaria,
         km_inicial: this.km_inicial,
         data_final_realizado_periodo: null,
-        km_final: null,
+        // km_final: null,
+        ativa: true,
       };
 
       if (this.isEditing) {
@@ -396,9 +408,34 @@ export default {
           });
         });
     },
-    getValorDiaria(id) {
-      const locacao = this.itens.find((c) => c.id === id);
-      return locacao ? locacao.valordiaria : id;
+    finalizarLocacao() {
+      let body = {
+        data_final_realizado_periodo: this.data_final_realizado_periodo,
+        km_final: this.km_final,
+        ativa: false,
+      };
+
+      locacaoService
+        .update(this.idSelecionado, body)
+        .then(() => {
+          this.dialogFinalizar = false;
+          this.snackbar = true;
+          this.color = "green";
+          this.mensagem = "Locação finalizada com sucesso!";
+          this.loadLocacoes();
+        })
+        .catch((error) => {
+          this.snackbar = true;
+          this.color = "red";
+          Object.keys(error.response.data.errors).forEach((field) => {
+            this.mensagem = error.response.data.errors[field][0];
+          });
+        });
+    },
+    disableItem(item) {
+      if (item.disponivel == 1) {
+        return false;
+      } else return true;
     },
     getNomeCarro(id) {
       const carro = this.carros.find((c) => c.id === id);
@@ -407,6 +444,13 @@ export default {
     getNomeCliente(id) {
       const cliente = this.clientes.find((c) => c.id === id);
       return cliente ? cliente.nome : id;
+    },
+    getStatus(ativa) {
+      if (ativa == true) {
+        return "Ativa";
+      } else {
+        return "Finalizada";
+      }
     },
     formatarData(data) {
       if (!data) return "";

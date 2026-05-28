@@ -17,6 +17,10 @@ export default {
     return api.put(`locacao/${id}`, data);
   },
 
+  patch(id, data) {
+    return api.patch(`locacao/${id}`, data);
+  },
+
   delete(id) {
     return api.delete(`locacao/${id}`);
   },

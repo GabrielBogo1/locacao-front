@@ -34,13 +34,27 @@
         </slot>
       </template>
       <template v-slot:[`item.actions`]="{ item }">
-        <v-btn icon @click="$emit('edit', item)">
+        <v-btn
+          icon
+          @click="$emit('edit', item)"
+          :disabled="!item.ativa && disableActions"
+        >
           <v-icon color="yellow">mdi-pencil</v-icon>
         </v-btn>
-        <v-btn icon @click="$emit('abrir-modal-delete', item)">
+
+        <v-btn
+          icon
+          @click="$emit('abrir-modal-delete', item)"
+          :disabled="!item.ativa && disableActions"
+        >
           <v-icon color="red">mdi-delete</v-icon>
         </v-btn>
-        <v-btn icon @click="$emit('abrir-modal-finalizar', item)">
+        <v-btn
+          v-if="mostraBotaoFinalizar"
+          icon
+          :disabled="!item.ativa"
+          @click="$emit('abrir-modal-finalizar', item)"
+        >
           <v-icon color="green">mdi-check-circle-outline</v-icon>
         </v-btn>
       </template>
@@ -50,9 +64,6 @@
 
 <script>
 export default {
-  components: {
-    // ModalComponent,
-  },
   data() {
     return {
       search: "",
@@ -77,13 +88,24 @@ export default {
       type: String,
       default: "Novo cadastro",
     },
+    mostraBotaoFinalizar: {
+      type: Boolean,
+      default: false,
+    },
+    disableBotaoFinalizar: {
+      type: Boolean,
+      default: false,
+    },
+    disableActions: {
+      type: Boolean,
+      default: false,
+    },
     searchLabel: {
       type: String,
       default: "Pesquisar",
     },
   },
   watch: {
-    // Atualiza o local caso o pai mude as options
     options(val) {
       this.localOptions = { ...val };
     },
