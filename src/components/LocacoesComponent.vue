@@ -1,8 +1,9 @@
 <template>
   <LayoutComponent>
+    <!-- Tabela Principal -->
     <CrudTableComponent
-      :headers="headers"
-      :itens="itens"
+      :headers="tabela.headers"
+      :itens="apiData.itens"
       buttonText="Nova Locação"
       :mostraBotaoFinalizar="true"
       :disableActions="true"
@@ -10,9 +11,9 @@
       @edit="abrirModalEdit"
       @abrir-modal-delete="abrirModalDelete"
       @abrir-modal-finalizar="abrirModalFinalizar"
-      :total-itens="totalItens"
-      :options.sync="options"
-      @update:options="loadLocacoesPaginado"
+      :total-itens="tabela.totalItens"
+      :options.sync="tabela.options"
+      @update:options="listar"
     >
       <template #[`item.data_inicio_periodo`]="{ item }">
         {{ formatarData(item.data_inicio_periodo) }}
@@ -41,79 +42,36 @@
         </span>
       </template>
     </CrudTableComponent>
-    <ModalFinalizarComponent
-      @input="dialogFinalizar = $event"
-      @finalizar="finalizarLocacao"
-      :value="dialogFinalizar"
-      :item="item"
-      ref="modaldois"
-    >
-      <template v-slot:conteudoLocacoesFinalizar>
-        <v-menu
-          ref="menuFinalizacao"
-          v-model="menuFinalizacao"
-          :close-on-content-click="false"
-          transition="scale-transition"
-          offset-y
-          min-width="auto"
-        >
-          <template v-slot:activator="{ on, attrs }">
-            <v-text-field
-              label="Data da finalização"
-              prepend-icon="mdi-calendar"
-              readonly
-              v-bind="attrs"
-              v-on="on"
-              :value="dataFinalizacaoFormatada"
-            ></v-text-field>
-          </template>
-          <v-date-picker
-            v-model="data_final_realizado_periodo"
-            no-title
-            scrollable
-            locale="pt-BR"
-          >
-            <v-spacer></v-spacer>
-            <v-btn text color="primary" @click="menuFinalizacao = false">
-              Cancel
-            </v-btn>
-            <v-btn text color="primary" @click="menuFinalizacao = false">
-              OK
-            </v-btn>
-          </v-date-picker>
-        </v-menu>
 
-        <v-text-field
-          label="KM Final*"
-          :rules="[rules.required]"
-          v-model="km_final"
-        ></v-text-field>
-      </template>
-    </ModalFinalizarComponent>
+    <!-- Modal delete locação -->
     <ModalDeleteComponent
-      @input="dialogDelete = $event"
+      @input="ui.dialogs.dialogDelete = $event"
       @delete="deleteLocacao"
-      :value="dialogDelete"
-      :item="item"
+      :value="ui.dialogs.dialogDelete"
+      :item="apiData.item"
     ></ModalDeleteComponent>
+
+    <!-- Modal de criação e edição de locação -->
     <ModalComponent
-      :value="dialog"
-      @input="dialog = $event"
+      :value="ui.dialogs.dialogNovo"
+      :isEditing="ui.isEditing"
+      @input="ui.dialogs.dialogNovo = $event"
       @save="save"
-      ref="modal"
+      @update="update"
+      ref="modalCreate"
     >
       <template v-slot:conteudoLocacoes>
         <v-select
           label="Cliente*"
-          v-model="cliente_id"
-          :items="clientes"
+          v-model="form.cliente_id"
+          :items="apiData.clientes"
           item-text="nome"
           item-value="id"
         ></v-select>
         <v-select
           label="Carro*"
-          v-model="carro_id"
-          :items="carros"
+          v-model="form.carro_id"
+          :items="apiData.carros"
           item-text="placa"
           item-value="id"
           :item-disabled="disableItem"
@@ -121,21 +79,16 @@
         <v-text-field
           label="Valor diária*"
           :rules="[rules.required]"
-          v-model="valor_diaria"
+          v-model="form.valor_diaria"
         ></v-text-field>
         <v-text-field
           label="KM Inicial*"
           :rules="[rules.required]"
-          v-model="km_inicial"
+          v-model="form.km_inicial"
         ></v-text-field>
-        <!-- <v-text-field
-          label="KM Final*"
-          :rules="[rules.required]"
-          v-model="km_final"
-        ></v-text-field> -->
         <v-menu
-          ref="menuInicial"
-          v-model="menuInicial"
+          ref="datePickerDataInicial"
+          v-model="ui.menus.dataInicial"
           :close-on-content-click="false"
           transition="scale-transition"
           offset-y
@@ -148,30 +101,27 @@
               readonly
               v-bind="attrs"
               v-on="on"
-              :value="dataFormatada"
+              :value="formatarData(form.data_inicio_periodo)"
             ></v-text-field>
           </template>
           <v-date-picker
-            v-model="data_inicio_periodo"
+            v-model="form.data_inicio_periodo"
             no-title
             scrollable
             locale="pt-BR"
           >
             <v-spacer></v-spacer>
-            <v-btn text color="primary" @click="menuInicial = false">
-              Cancel
+            <v-btn text color="primary" @click="ui.menus.dataInicial = false">
+              Cancelar
             </v-btn>
-            <v-btn text color="primary" @click="menuInicial = false">
+            <v-btn text color="primary" @click="ui.menus.dataInicial = false">
               OK
             </v-btn>
           </v-date-picker>
         </v-menu>
-
-        <!---SEPARACAO---->
-
         <v-menu
-          ref="menu"
-          v-model="menu"
+          ref="datePickerDataFinalPrevista"
+          v-model="ui.menus.dataFinalPrevista"
           :close-on-content-click="false"
           transition="scale-transition"
           offset-y
@@ -179,44 +129,107 @@
         >
           <template v-slot:activator="{ on, attrs }">
             <v-text-field
-              label="Data Final"
+              label="Data Final Prevista"
               prepend-icon="mdi-calendar"
               readonly
               v-bind="attrs"
               v-on="on"
-              :value="dataFinalFormatada"
+              :value="formatarData(form.data_final_previsto_periodo)"
             ></v-text-field>
           </template>
           <v-date-picker
-            v-model="data_final_previsto_periodo"
+            v-model="form.data_final_previsto_periodo"
             no-title
             scrollable
             locale="pt-BR"
           >
             <v-spacer></v-spacer>
-            <v-btn text color="primary" @click="menu = false"> Cancel </v-btn>
-            <v-btn text color="primary" @click="menu = false"> OK </v-btn>
+            <v-btn
+              text
+              color="primary"
+              @click="ui.menus.dataFinalPrevista = false"
+            >
+              Cancelar
+            </v-btn>
+            <v-btn
+              text
+              color="primary"
+              @click="ui.menus.dataFinalPrevista = false"
+            >
+              OK
+            </v-btn>
           </v-date-picker>
         </v-menu>
       </template>
     </ModalComponent>
+
+    <!-- Modal de finalização de locação -->
+    <ModalFinalizarComponent
+      @input="ui.dialogs.dialogFinalizar = $event"
+      @finalizar="finalizarLocacao"
+      :value="ui.dialogs.dialogFinalizar"
+      :item="apiData.item"
+      ref="modalFinalizarLocacao"
+    >
+      <template v-slot:conteudoLocacoesFinalizar>
+        <v-menu
+          ref="datePickerFinalizacaoDeLocacao"
+          v-model="ui.menus.finalizacao"
+          :close-on-content-click="false"
+          transition="scale-transition"
+          offset-y
+          min-width="auto"
+        >
+          <template v-slot:activator="{ on, attrs }">
+            <v-text-field
+              label="Data da finalização"
+              prepend-icon="mdi-calendar"
+              readonly
+              v-bind="attrs"
+              v-on="on"
+              :value="formatarData(form.data_final_realizado_periodo)"
+            ></v-text-field>
+          </template>
+          <v-date-picker
+            v-model="form.data_final_realizado_periodo"
+            no-title
+            scrollable
+            locale="pt-BR"
+          >
+            <v-spacer></v-spacer>
+            <v-btn text color="primary" @click="ui.menus.finalizacao = false">
+              Cancelar
+            </v-btn>
+            <v-btn text color="primary" @click="ui.menus.finalizacao = false">
+              OK
+            </v-btn>
+          </v-date-picker>
+        </v-menu>
+        <v-text-field
+          label="KM Final*"
+          :rules="[rules.required]"
+          v-model="form.km_final"
+        ></v-text-field>
+      </template>
+    </ModalFinalizarComponent>
+
+    <!-- Snackbar -->
     <v-snackbar
-      v-model="snackbar"
+      v-model="ui.snackbar"
       :timeout="4000"
       bottom
       right
       elevation="6"
       rounded="lg"
-      :color="color"
+      :color="ui.color"
     >
       <div class="d-flex align-center">
         <v-icon left>mdi-alert-circle</v-icon>
-        {{ this.mensagem }}
+        {{ this.ui.mensagem }}
       </div>
     </v-snackbar>
   </LayoutComponent>
 </template>
-
 <script>
 import CrudTableComponent from "@/components/CrudTableComponent.vue";
 import LayoutComponent from "./LayoutComponent.vue";
@@ -226,6 +239,7 @@ import carroService from "@/services/carroService";
 import clienteService from "@/services/clienteService";
 import ModalDeleteComponent from "./ModalDeleteComponent.vue";
 import ModalFinalizarComponent from "./ModalFinalizarComponent.vue";
+import crudMixin from "@/mixins/crudMixin.js";
 export default {
   name: "LocacoesComponent",
   components: {
@@ -235,36 +249,66 @@ export default {
     ModalDeleteComponent,
     ModalFinalizarComponent,
   },
+  mixins: [crudMixin],
   data() {
     return {
-      menu: false,
-      menuInicial: false,
-      menuFinalizacao: false,
-      dialogFinalizar: false,
-      item: [],
-      itens: [],
-      clientes: [],
-      cliente_id: null,
-      carros: [],
-      carro_id: null,
-      data_inicio_periodo: "",
-      data_final_previsto_periodo: "",
-      data_final_realizado_periodo: "",
-      valor_diaria: "",
-      km_inicial: "",
-      km_final: "",
-      ativa: "",
-      teste: 0,
-      totalItens: 0,
-      options: { page: 1, itemsPerPage: 10 },
-      snackbar: false,
-      isEditing: false,
-      idSelecionado: null,
-      mensagem: "",
-      dialog: false,
-      color: "",
-      statusColor: "",
-      dialogDelete: false,
+      service: locacaoService,
+      // UI / Controle de estado
+      ui: {
+        menus: {
+          dataFinalPrevista: false,
+          dataInicial: false,
+          dataFinalizacao: false,
+        },
+        dialogs: {
+          dialogNovo: false,
+          dialogFinalizar: false,
+          dialogDelete: false,
+        },
+        snackbar: false,
+        color: "",
+        mensagem: "",
+        isEditing: false,
+      },
+
+      // Dados da tabela
+      tabela: {
+        headers: [
+          { text: "ID", value: "id" },
+          { text: "Cliente", value: "cliente_id" },
+          { text: "Carro", value: "carro_id" },
+          { text: "Data Início", value: "data_inicio_periodo" },
+          { text: "Data Final Prev.", value: "data_final_previsto_periodo" },
+          { text: "Valor diária", value: "valor_diaria" },
+          { text: "Status", value: "ativa" },
+          { text: "Ações", value: "actions" },
+        ],
+        options: { page: 1, itemsPerPage: 10 },
+        totalItens: 0,
+      },
+
+      // Dados do formulário
+      form: {
+        cliente_id: null,
+        carro_id: null,
+        data_inicio_periodo: "",
+        data_final_previsto_periodo: "",
+        data_final_realizado_periodo: "",
+        valor_diaria: "",
+        km_inicial: "",
+        km_final: "",
+        ativa: "",
+      },
+
+      // Dados api
+      apiData: {
+        item: [],
+        itens: [],
+        clientes: [],
+        carros: [],
+        idSelecionado: null,
+      },
+
       horaAtual: new Date().toLocaleString("pt-BR", {
         timeZone: "America/Sao_Paulo",
       }),
@@ -273,162 +317,104 @@ export default {
           (value !== null && value !== undefined && value !== "") ||
           "Campo obrigatório.",
       },
-      headers: [
-        { text: "ID", value: "id" },
-        { text: "Cliente", value: "cliente_id" },
-        { text: "Carro", value: "carro_id" },
-        { text: "Data Início", value: "data_inicio_periodo" },
-        { text: "Data Final Prev.", value: "data_final_previsto_periodo" },
-        { text: "Valor diária", value: "valor_diaria" },
-        { text: "Status", value: "ativa" },
-        { text: "Ações", value: "actions" },
-      ],
     };
   },
   computed: {
-    dataFormatada() {
-      if (!this.data_inicio_periodo) return "";
-      const [ano, mes, dia] = this.data_inicio_periodo.split("-");
-      return `${dia}/${mes}/${ano}`;
+    requestPayload() {
+      let horarioEnvio = this.horaAtual.split(",");
+      return {
+        cliente_id: this.form.cliente_id,
+        carro_id: this.form.carro_id,
+        data_inicio_periodo:
+          this.form.data_inicio_periodo + "" + horarioEnvio[1],
+        data_final_previsto_periodo:
+          this.form.data_final_previsto_periodo + "" + horarioEnvio[1],
+        valor_diaria: this.form.valor_diaria,
+        km_inicial: this.form.km_inicial,
+        data_final_realizado_periodo: null,
+        ativa: true,
+      };
     },
-    dataFinalFormatada() {
-      if (!this.data_final_previsto_periodo) return "";
-      const [ano, mes, dia] = this.data_final_previsto_periodo.split("-");
-      return `${dia}/${mes}/${ano}`;
-    },
-    dataFinalizacaoFormatada() {
-      if (!this.data_final_realizado_periodo) return "";
-      const [ano, mes, dia] = this.data_final_realizado_periodo.split("-");
-      return `${dia}/${mes}/${ano}`;
+    requestParams() {
+      return {
+        page: this.tabela.options.page,
+        per_page: this.tabela.options.itemsPerPage,
+      };
     },
   },
   methods: {
     abrirModal() {
-      this.dialog = true;
+      this.ui.dialogs.dialogNovo = true;
+      this.ui.isEditing = false;
+      this.loadClientes();
+
       this.$nextTick(() => {
-        this.$refs.modal.resetForm();
+        this.$refs.modalCreate.resetForm();
         this.data_inicio_periodo = new Date().toISOString().substr(0, 10);
       });
     },
     abrirModalEdit(item) {
-      this.dialog = true;
-      this.isEditing = true;
+      this.ui.dialogs.dialogNovo = true;
+      this.ui.isEditing = true;
 
-      this.idSelecionado = item.id;
-      this.cliente_id = item.cliente_id;
-      this.carro_id = item.carro_id;
-      this.data_inicio_periodo = item.data_inicio_periodo.substr(0, 10);
-      this.data_final_previsto_periodo =
+      this.apiData.idSelecionado = item.id;
+      this.form.cliente_id = item.cliente_id;
+      this.form.carro_id = item.carro_id;
+      this.form.data_inicio_periodo = item.data_inicio_periodo.substr(0, 10);
+      this.form.data_final_previsto_periodo =
         item.data_final_previsto_periodo.substr(0, 10);
-      this.valor_diaria = item.valor_diaria;
-      this.km_inicial = item.km_inicial;
+      this.form.valor_diaria = item.valor_diaria;
+      this.form.km_inicial = item.km_inicial;
     },
     abrirModalDelete(item) {
-      this.dialogDelete = true;
-      this.item = item;
+      this.ui.dialogs.dialogDelete = true;
+      this.apiData.item = item;
     },
     abrirModalFinalizar(item) {
-      this.dialogFinalizar = true;
-      this.idSelecionado = item.id;
+      this.ui.dialogs.dialogFinalizar = true;
+      this.apiData.idSelecionado = item.id;
 
       this.$nextTick(() => {
-        this.$refs.modaldois.resetForm();
+        this.$refs.modalFinalizarLocacao.resetForm();
       });
-    },
-    save() {
-      let horarioEnvio = this.horaAtual.split(",");
-      let body = {
-        cliente_id: this.cliente_id,
-        carro_id: this.carro_id,
-        data_inicio_periodo: this.data_inicio_periodo + "" + horarioEnvio[1],
-        data_final_previsto_periodo:
-          this.data_final_previsto_periodo + "" + horarioEnvio[1],
-        valor_diaria: this.valor_diaria,
-        km_inicial: this.km_inicial,
-        data_final_realizado_periodo: null,
-        // km_final: null,
-        ativa: true,
-      };
-
-      if (this.isEditing) {
-        locacaoService
-          .update(this.idSelecionado, body)
-          .then(() => {
-            this.dialog = false;
-            this.snackbar = true;
-            this.color = "green";
-            this.mensagem = "Locação atualizada com sucesso!";
-            this.loadLocacoes();
-          })
-          .catch((error) => {
-            this.snackbar = true;
-            this.color = "red";
-            Object.keys(error.response.data.errors).forEach((field) => {
-              this.mensagem = error.response.data.errors[field][0];
-            });
-          });
-      } else {
-        locacaoService
-          .create(body)
-          .then(() => {
-            this.dialog = false;
-            this.isEditing = false;
-            this.snackbar = true;
-            this.color = "green";
-            this.mensagem = "Locação criada com sucesso!";
-            this.loadLocacoes();
-          })
-          .catch((error) => {
-            this.snackbar = true;
-            this.color = "red";
-            if (error.response.status == 500) {
-              this.snackbar = true;
-              this.mensagem = error.response.data.message;
-            } else {
-              Object.keys(error.response.data.errors).forEach((field) => {
-                this.mensagem = error.response.data.errors[field][0];
-              });
-            }
-          });
-      }
     },
     deleteLocacao() {
       locacaoService
-        .delete(this.item.id)
+        .delete(this.apiData.item.id)
         .then(() => {
-          this.dialogDelete = false;
-          this.color = "green";
-          this.mensagem = "Locação deletada com sucesso!";
+          this.ui.dialogs.dialogDelete = false;
+          this.ui.color = "green";
+          this.ui.mensagem = "Locação deletada com sucesso!";
           this.loadLocacoes();
         })
         .catch((error) => {
-          this.snackbar = true;
+          this.ui.snackbar = true;
           Object.keys(error.response.data.errors).forEach((field) => {
-            this.mensagem = error.response.data.errors[field][0];
+            this.ui.mensagem = error.response.data.errors[field][0];
           });
         });
     },
     finalizarLocacao() {
       let body = {
-        data_final_realizado_periodo: this.data_final_realizado_periodo,
-        km_final: this.km_final,
+        data_final_realizado_periodo: this.form.data_final_realizado_periodo,
+        km_final: this.form.km_final,
         ativa: false,
       };
 
       locacaoService
-        .update(this.idSelecionado, body)
+        .update(this.apiData.idSelecionado, body)
         .then(() => {
-          this.dialogFinalizar = false;
-          this.snackbar = true;
-          this.color = "green";
-          this.mensagem = "Locação finalizada com sucesso!";
+          this.ui.dialogs.dialogFinalizar = false;
+          this.ui.snackbar = true;
+          this.ui.color = "green";
+          this.ui.mensagem = "Locação finalizada com sucesso!";
           this.loadLocacoes();
         })
         .catch((error) => {
-          this.snackbar = true;
-          this.color = "red";
+          this.ui.snackbar = true;
+          this.ui.color = "red";
           Object.keys(error.response.data.errors).forEach((field) => {
-            this.mensagem = error.response.data.errors[field][0];
+            this.ui.mensagem = error.response.data.errors[field][0];
           });
         });
     },
@@ -438,51 +424,35 @@ export default {
       } else return true;
     },
     getNomeCarro(id) {
-      const carro = this.carros.find((c) => c.id === id);
+      const carro = this.apiData.carros.find((c) => c.id === id);
       return carro ? carro.placa : id;
     },
     getNomeCliente(id) {
-      const cliente = this.clientes.find((c) => c.id === id);
+      const cliente = this.apiData.clientes.find((c) => c.id === id);
       return cliente ? cliente.nome : id;
     },
     getStatus(ativa) {
-      if (ativa == true) {
-        return "Ativa";
-      } else {
-        return "Finalizada";
-      }
+      let status = ativa ? "Ativa" : "Finalizada";
+      return status;
     },
     formatarData(data) {
       if (!data) return "";
       const [ano, mes, dia] = data.substr(0, 10).split("-");
       return `${dia}/${mes}/${ano}`;
     },
-    async loadLocacoes() {
-      const { data } = await locacaoService.getAll();
-      this.itens = data.data;
-    },
     async loadCarros() {
       const { data } = await carroService.getAll();
-      this.carros = data.data;
+      this.apiData.carros = data.data;
     },
     async loadClientes() {
       const { data } = await clienteService.getAll();
-      this.clientes = data.data;
-    },
-    async loadLocacoesPaginado() {
-      const { data } = await locacaoService.getPaginate(
-        this.options.page,
-        this.options.itemsPerPage
-      );
-      this.itens = data.data;
-      this.totalItens = data.total;
+      this.apiData.clientes = data.data;
     },
   },
-
   mounted() {
-    this.loadLocacoes();
-    this.loadCarros();
+    this.listar();
     this.loadClientes();
+    this.loadCarros();
   },
 };
 </script>

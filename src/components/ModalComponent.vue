@@ -23,7 +23,15 @@
           <v-btn color="black darken-1" text @click="internalValue = false">
             Fechar
           </v-btn>
-          <v-btn color="green darken-1" text @click="$emit('save')">
+          <v-btn
+            color="yellow darken-1"
+            text
+            @click="$emit('update')"
+            v-if="isEditing"
+          >
+            Editar
+          </v-btn>
+          <v-btn color="green darken-1" text @click="$emit('save')" v-else>
             Salvar
           </v-btn>
         </v-card-actions>
@@ -38,6 +46,7 @@ export default {
   props: {
     value: Boolean,
     buttonText: String,
+    isEditing: Boolean,
   },
   methods: {
     resetForm() {
