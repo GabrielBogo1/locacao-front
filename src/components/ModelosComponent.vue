@@ -10,6 +10,7 @@
       :total-itens="totalItens"
       :options.sync="options"
       @update:options="loadModelosPaginado"
+      @update:search="search = $event"
     >
       <template v-slot:[`item.image`]="{ item }">
         <v-img
@@ -18,6 +19,15 @@
           max-height="60"
           contain
         ></v-img>
+      </template>
+      <template v-slot:[`item.marca_id`]="{ item }">
+        {{ getMarca(item.marca_id) }}
+      </template>
+      <template v-slot:[`item.air_bag`]="{ item }">
+        {{ returnAirBag(item.air_bag) }}
+      </template>
+      <template v-slot:[`item.abs`]="{ item }">
+        {{ returnFreioAbs(item.abs) }}
       </template>
     </CrudTableComponent>
     <ModalDeleteComponent
@@ -131,6 +141,7 @@ export default {
       itens: [],
       item: [],
       idEdit: "",
+      search: "",
       isEditing: false,
       imagem: null,
       numero_portas: "",
@@ -149,6 +160,7 @@ export default {
       label: "",
       headers: [
         { text: "Id", value: "id" },
+        { text: "Marca", value: "marca_id" },
         { text: "Nome", value: "nome" },
         { text: "Imagem", value: "image" },
         { text: "nPortas", value: "numero_portas" },
@@ -206,7 +218,8 @@ export default {
     async loadModelosPaginado() {
       const { data } = await modeloService.getPaginate(
         this.options.page,
-        this.options.itemsPerPage
+        this.options.itemsPerPage,
+        this.search
       );
       this.itens = data.data;
       this.totalItens = data.total;
@@ -286,6 +299,10 @@ export default {
           });
         });
     },
+    getMarca(id) {
+      const marca = this.marcas.find((c) => c.id === id);
+      return marca ? marca.nome : id;
+    },
     async loadModelos() {
       const { data } = await modeloService.getAll();
       this.itens = data.data;
@@ -294,11 +311,22 @@ export default {
       const { data } = await marcaService.getAll();
       this.marcas = data.data;
     },
+    returnAirBag(item) {
+      return item == 1 ? "Sim" : "Não";
+    },
+    returnFreioAbs(item) {
+      return item == true ? "Sim" : "Não";
+    },
   },
   mounted() {
-    // this.loadModelos();
     this.loadMarcas();
     this.loadModelosPaginado();
+  },
+  watch: {
+    search() {
+      this.options.page = 1;
+      this.loadModelosPaginado();
+    },
   },
   components: {
     LayoutComponent,

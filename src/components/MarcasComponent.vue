@@ -10,6 +10,7 @@
       :total-itens="totalItens"
       :options.sync="options"
       @update:options="loadMarcasPaginado"
+      @update:search="search = $event"
     >
       <template v-slot:[`item.image`]="{ item }">
         <v-img
@@ -97,6 +98,7 @@ export default {
       mensagem: "",
       totalItens: 0,
       options: { page: 1, itemsPerPage: 10 },
+      search: "",
       isEditing: false,
       idSelecionado: null,
       snackbar: false,
@@ -138,7 +140,8 @@ export default {
     async loadMarcasPaginado() {
       const { data } = await marcaService.getPaginate(
         this.options.page,
-        this.options.itemsPerPage
+        this.options.itemsPerPage,
+        this.search
       );
       this.itens = data.data;
       this.totalItens = data.total;
@@ -225,8 +228,12 @@ export default {
       this.itens = data.data;
     },
   },
-  async mounted() {
-    await this.loadMarcas();
+
+  watch: {
+    search() {
+      this.options.page = 1;
+      this.loadMarcasPaginado();
+    },
   },
   components: {
     LayoutComponent,

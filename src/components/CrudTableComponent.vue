@@ -20,7 +20,6 @@
       class="elevation-1"
       :headers="headers"
       :items="itens"
-      :search="search"
       :server-items-length="totalItens"
       :options.sync="localOptions"
       @update:options="$emit('update:options', $event)"
@@ -42,11 +41,7 @@
           <v-icon color="yellow">mdi-pencil</v-icon>
         </v-btn>
 
-        <v-btn
-          icon
-          @click="$emit('abrir-modal-delete', item)"
-          :disabled="!item.ativa && disableActions"
-        >
+        <v-btn icon @click="$emit('abrir-modal-delete', item)">
           <v-icon color="red">mdi-delete</v-icon>
         </v-btn>
         <v-btn
@@ -108,6 +103,12 @@ export default {
   watch: {
     options(val) {
       this.localOptions = { ...val };
+    },
+    search(val) {
+      clearTimeout(this._searchTimeout);
+      this._searchTimeout = setTimeout(() => {
+        this.$emit("update:search", val);
+      }, 400); // espera 400ms após parar de digitar
     },
   },
 };

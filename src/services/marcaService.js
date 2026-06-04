@@ -5,8 +5,10 @@ export default {
     return api.get("/marca");
   },
 
-  getPaginate(page = 1, perPage = 10) {
-    return api.get(`/marca/paginate?page=${page}&per_page=${perPage}`);
+  getPaginate(page = 1, perPage = 10, search = "") {
+    return api.get(
+      `/marca/paginate?page=${page}&per_page=${perPage}&search=${search}`
+    );
   },
 
   create(data) {

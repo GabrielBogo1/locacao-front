@@ -5,8 +5,10 @@ export default {
     return api.get("/locacao");
   },
 
-  getPaginate(page = 1, perPage = 10) {
-    return api.get(`/locacao/paginate?page=${page}&per_page=${perPage}`);
+  getPaginate(page = 1, perPage = 10, search = "") {
+    return api.get(
+      `/locacao/paginate?page=${page}&per_page=${perPage}&search=${search}`
+    );
   },
 
   create(data) {

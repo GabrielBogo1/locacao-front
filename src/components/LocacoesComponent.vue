@@ -14,6 +14,7 @@
       :total-itens="tabela.totalItens"
       :options.sync="tabela.options"
       @update:options="listar"
+      @update:search="tabela.search = $event"
     >
       <template #[`item.data_inicio_periodo`]="{ item }">
         {{ formatarData(item.data_inicio_periodo) }}
@@ -46,7 +47,7 @@
     <!-- Modal delete locação -->
     <ModalDeleteComponent
       @input="ui.dialogs.dialogDelete = $event"
-      @delete="deleteLocacao"
+      @delete="destroy"
       :value="ui.dialogs.dialogDelete"
       :item="apiData.item"
     ></ModalDeleteComponent>
@@ -285,6 +286,7 @@ export default {
         ],
         options: { page: 1, itemsPerPage: 10 },
         totalItens: 0,
+        search: "",
       },
 
       // Dados do formulário
@@ -300,18 +302,13 @@ export default {
         ativa: "",
       },
 
-      // Dados api
+      // Dados API
       apiData: {
-        item: [],
         itens: [],
         clientes: [],
         carros: [],
         idSelecionado: null,
       },
-
-      horaAtual: new Date().toLocaleString("pt-BR", {
-        timeZone: "America/Sao_Paulo",
-      }),
       rules: {
         required: (value) =>
           (value !== null && value !== undefined && value !== "") ||
@@ -321,7 +318,11 @@ export default {
   },
   computed: {
     requestPayload() {
-      let horarioEnvio = this.horaAtual.split(",");
+      let horaAtual = new Date().toLocaleString("pt-BR", {
+        timeZone: "America/Sao_Paulo",
+      });
+
+      let horarioEnvio = horaAtual.split(",");
       return {
         cliente_id: this.form.cliente_id,
         carro_id: this.form.carro_id,
@@ -339,6 +340,7 @@ export default {
       return {
         page: this.tabela.options.page,
         per_page: this.tabela.options.itemsPerPage,
+        search: this.tabela.search,
       };
     },
   },
@@ -346,7 +348,6 @@ export default {
     abrirModal() {
       this.ui.dialogs.dialogNovo = true;
       this.ui.isEditing = false;
-      this.loadClientes();
 
       this.$nextTick(() => {
         this.$refs.modalCreate.resetForm();
@@ -356,15 +357,15 @@ export default {
     abrirModalEdit(item) {
       this.ui.dialogs.dialogNovo = true;
       this.ui.isEditing = true;
-
       this.apiData.idSelecionado = item.id;
-      this.form.cliente_id = item.cliente_id;
-      this.form.carro_id = item.carro_id;
+
+      for (let form in this.form) {
+        this.form[form] = item[form];
+      }
+
       this.form.data_inicio_periodo = item.data_inicio_periodo.substr(0, 10);
       this.form.data_final_previsto_periodo =
         item.data_final_previsto_periodo.substr(0, 10);
-      this.form.valor_diaria = item.valor_diaria;
-      this.form.km_inicial = item.km_inicial;
     },
     abrirModalDelete(item) {
       this.ui.dialogs.dialogDelete = true;
@@ -376,23 +377,10 @@ export default {
 
       this.$nextTick(() => {
         this.$refs.modalFinalizarLocacao.resetForm();
-      });
-    },
-    deleteLocacao() {
-      locacaoService
-        .delete(this.apiData.item.id)
-        .then(() => {
-          this.ui.dialogs.dialogDelete = false;
-          this.ui.color = "green";
-          this.ui.mensagem = "Locação deletada com sucesso!";
-          this.loadLocacoes();
-        })
-        .catch((error) => {
-          this.ui.snackbar = true;
-          Object.keys(error.response.data.errors).forEach((field) => {
-            this.ui.mensagem = error.response.data.errors[field][0];
-          });
+        this.$nextTick(() => {
+          this.form.km_final = item.km_inicial;
         });
+      });
     },
     finalizarLocacao() {
       let body = {
@@ -408,20 +396,23 @@ export default {
           this.ui.snackbar = true;
           this.ui.color = "green";
           this.ui.mensagem = "Locação finalizada com sucesso!";
-          this.loadLocacoes();
+          this.listar();
         })
         .catch((error) => {
           this.ui.snackbar = true;
           this.ui.color = "red";
-          Object.keys(error.response.data.errors).forEach((field) => {
-            this.ui.mensagem = error.response.data.errors[field][0];
-          });
+          if (error.response.status == 500) {
+            this.ui.mensagem = error.response.data.message;
+            this.notificar(this.ui.mensagem, "error");
+          } else {
+            Object.keys(error.response.data.errors).forEach((field) => {
+              this.ui.mensagem = error.response.data.errors[field][0];
+            });
+          }
         });
     },
     disableItem(item) {
-      if (item.disponivel == 1) {
-        return false;
-      } else return true;
+      return item.disponivel == 1 ? false : true;
     },
     getNomeCarro(id) {
       const carro = this.apiData.carros.find((c) => c.id === id);
@@ -432,8 +423,7 @@ export default {
       return cliente ? cliente.nome : id;
     },
     getStatus(ativa) {
-      let status = ativa ? "Ativa" : "Finalizada";
-      return status;
+      return ativa ? "Ativa" : "Finalizada";
     },
     formatarData(data) {
       if (!data) return "";
@@ -449,8 +439,19 @@ export default {
       this.apiData.clientes = data.data;
     },
   },
+  watch: {
+    "form.carro_id"(novoId) {
+      const carro = this.apiData.carros.find((c) => c.id === novoId);
+      if (carro) {
+        this.form.km_inicial = carro.km;
+      }
+    },
+    "tabela.search"() {
+      this.tabela.options.page = 1;
+      this.listar();
+    },
+  },
   mounted() {
-    this.listar();
     this.loadClientes();
     this.loadCarros();
   },

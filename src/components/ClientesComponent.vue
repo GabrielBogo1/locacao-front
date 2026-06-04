@@ -10,6 +10,7 @@
       :total-itens="totalItens"
       :options.sync="options"
       @update:options="loadClientesPaginado"
+      @update:search="search = $event"
     >
     </CrudTableComponent>
     <ModalDeleteComponent
@@ -86,11 +87,12 @@ export default {
       mensagem: "",
       totalItens: 0,
       options: { page: 1, itemsPerPage: 10 },
-      item: [],
+      // item: [],
       itens: [],
       isEditing: false,
       idEdit: null,
       color: "",
+      search: "",
       headers: [
         { text: "Id", value: "id" },
         { text: "Nome", value: "nome" },
@@ -140,7 +142,8 @@ export default {
     async loadClientesPaginado() {
       const { data } = await clienteService.getPaginate(
         this.options.page,
-        this.options.itemsPerPage
+        this.options.itemsPerPage,
+        this.search
       );
       this.itens = data.data;
       this.totalItens = data.total;
@@ -220,9 +223,24 @@ export default {
       const { data } = await clienteService.getAll();
       this.itens = data.data;
     },
+    async loadModelosPaginado() {
+      const { data } = await clienteService.getPaginate(
+        this.options.page,
+        this.options.itemsPerPage,
+        this.search
+      );
+      this.itens = data.data;
+      this.totalItens = data.total;
+    },
+  },
+  watch: {
+    search() {
+      this.options.page = 1;
+      this.loadClientesPaginado();
+    },
   },
   mounted() {
-    this.loadUsers();
+    this.loadUsersPaginado();
   },
 
   components: {

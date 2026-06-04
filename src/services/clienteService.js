@@ -5,8 +5,10 @@ export default {
     return api.get("/cliente");
   },
 
-  getPaginate(page = 1, perPage = 10) {
-    return api.get(`/cliente/paginate?page=${page}&per_page=${perPage}`);
+  getPaginate(page = 1, perPage = 10, search = "") {
+    return api.get(
+      `/cliente/paginate?page=${page}&per_page=${perPage}&search=${search}`
+    );
   },
 
   create(data) {

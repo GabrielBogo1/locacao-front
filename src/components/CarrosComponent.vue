@@ -10,6 +10,7 @@
       :total-itens="totalItens"
       :options.sync="options"
       @update:options="loadCarrosPaginado"
+      @update:search="search = $event"
     >
       <template #[`item.modelo_id`]="{ item }">
         {{ getNomeModelo(item.modelo_id) }}
@@ -97,6 +98,7 @@ export default {
       disponivel: 1,
       km: "",
       color: "",
+      search: "",
       snackbar: false,
       mensagem: false,
       isEditing: false,
@@ -119,6 +121,7 @@ export default {
   methods: {
     abrirModal() {
       this.dialog = true;
+      this.isEditing = false;
       this.$nextTick(() => {
         this.$refs.modal.resetForm();
       });
@@ -140,7 +143,8 @@ export default {
     async loadCarrosPaginado() {
       const { data } = await carroService.getPaginate(
         this.options.page,
-        this.options.itemsPerPage
+        this.options.itemsPerPage,
+        this.search
       );
       this.itens = data.data;
       this.totalItens = data.total;
@@ -235,9 +239,13 @@ export default {
     },
   },
   mounted() {
-    // this.loadCarros();
-    this.loadCarrosPaginado();
     this.loadModelos();
+  },
+  watch: {
+    search() {
+      this.options.page = 1;
+      this.loadCarrosPaginado();
+    },
   },
   components: {
     LayoutComponent,

@@ -14,11 +14,11 @@ export default {
       try {
         const { data } = await this.service.getPaginate(
           this.tabela.options.page,
-          this.tabela.options.itemsPerPage
+          this.tabela.options.itemsPerPage,
+          this.tabela.search
         );
         this.apiData.itens = data.data;
         this.tabela.totalItens = data.total;
-        console.log(data);
       } catch (e) {
         this.notificar("Erro ao carregar dados!", "error");
       }
@@ -28,8 +28,10 @@ export default {
       try {
         await this.service.create(this.requestPayload);
         this.notificar("Registro salvo com sucesso!", "success");
+        this.ui.dialogs.dialogNovo = false;
         this.listar();
       } catch (error) {
+        this.ui.dialogs.dialogNovo = true;
         this.handleErrors(error);
       }
     },
@@ -41,6 +43,18 @@ export default {
           this.requestPayload
         );
         this.notificar("Registro atualizado com sucesso", "success");
+        this.ui.dialogs.dialogNovo = false;
+        this.listar();
+      } catch (error) {
+        this.handleErrors(error);
+      }
+    },
+
+    async destroy() {
+      try {
+        await this.service.delete(this.apiData.item.id);
+        this.notificar("Registro deletado com sucesso", "success");
+        this.ui.dialogs.dialogDelete = false;
         this.listar();
       } catch (error) {
         this.handleErrors(error);
@@ -48,7 +62,6 @@ export default {
     },
 
     notificar(mensagem, color) {
-      this.ui.dialogs.dialogNovo = false;
       this.ui.mensagem = mensagem;
       this.ui.color = color;
       this.ui.snackbar = true;
